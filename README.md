@@ -105,7 +105,7 @@ To retrieve the actual value of the tensor, we call the `numpy` method on the te
 This converts the tensor to a numpy array and then to its native python type, in this case, an integer.
 The final output is the integer 3.
 ```python
-print(result.numpy())
+>>> print(result.numpy())
 3
 ```
 
@@ -114,13 +114,13 @@ A constant is an immutable tensor – its value cannot be changed after it's cre
 The value is encoded as a byte string, which is indicated by the prefix 'b' in the output.
 ```python
 hello = tf.constant('Hello, TensorFlow!')
-b'Hello, TensorFlow!'
 ```
 
 When we call the `numpy` method on the string tensor, we get the raw bytes of the string.
 Since we're dealing with a string tensor, `numpy` returns a byte string as indicated by the `b` prefix.
 ```python
-print(hello.numpy())
+>>> print(hello.numpy())
+b'Hello, TensorFlow!'
 ```
 
 For more examples, see the
