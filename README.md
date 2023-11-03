@@ -106,6 +106,7 @@ This converts the tensor to a numpy array and then to its native python type, in
 The final output is the integer 3.
 ```python
 print(result.numpy())
+3
 ```
 
 Creating a TensorFlow constant with the string value 'Hello, TensorFlow!'.
@@ -113,6 +114,7 @@ A constant is an immutable tensor – its value cannot be changed after it's cre
 The value is encoded as a byte string, which is indicated by the prefix 'b' in the output.
 ```python
 hello = tf.constant('Hello, TensorFlow!')
+b'Hello, TensorFlow!'
 ```
 
 When we call the `numpy` method on the string tensor, we get the raw bytes of the string.
