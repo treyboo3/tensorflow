@@ -87,29 +87,39 @@ $ python
 >>> hello.numpy()
 b'Hello, TensorFlow!'
 ```
-# Import the TensorFlow library.
-# This is the first step in any TensorFlow-based program.
-# TensorFlow is typically imported under the alias `tf`.
+Import the TensorFlow library.
+This is the first step in any TensorFlow-based program.
+TensorFlow is typically imported under the alias `tf`.
+```python
 import tensorflow as tf
+```
 
-# Using TensorFlow's `add` function to compute the sum of two numbers.
-# Here, we add the numbers 1 and 2. The `add` function is one of the many mathematical operations that TensorFlow supports.
-# The result of tf.add is a TensorFlow tensor.
+Using TensorFlow's `add` function to compute the sum of two numbers.
+Here, we add the numbers 1 and 2. The `add` function is one of the many mathematical operations that TensorFlow supports.
+The result of tf.add is a TensorFlow tensor.
+```python
 result = tf.add(1, 2)
+```
 
-# To retrieve the actual value of the tensor, we call the `numpy` method on the tensor object.
-# This converts the tensor to a numpy array and then to its native python type, in this case, an integer.
-# The final output is the integer 3.
+To retrieve the actual value of the tensor, we call the `numpy` method on the tensor object.
+This converts the tensor to a numpy array and then to its native python type, in this case, an integer.
+The final output is the integer 3.
+```python
 print(result.numpy())
+```
 
-# Creating a TensorFlow constant with the string value 'Hello, TensorFlow!'.
-# A constant is an immutable tensor – its value cannot be changed after it's created, which is why it's called a constant.
-# The value is encoded as a byte string, which is indicated by the prefix 'b' in the output.
+Creating a TensorFlow constant with the string value 'Hello, TensorFlow!'.
+A constant is an immutable tensor – its value cannot be changed after it's created, which is why it's called a constant.
+The value is encoded as a byte string, which is indicated by the prefix 'b' in the output.
+```python
 hello = tf.constant('Hello, TensorFlow!')
+```
 
-# When we call the `numpy` method on the string tensor, we get the raw bytes of the string.
-# Since we're dealing with a string tensor, `numpy` returns a byte string as indicated by the `b` prefix.
+When we call the `numpy` method on the string tensor, we get the raw bytes of the string.
+Since we're dealing with a string tensor, `numpy` returns a byte string as indicated by the `b` prefix.
+```python
 print(hello.numpy())
+```
 
 For more examples, see the
 [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
