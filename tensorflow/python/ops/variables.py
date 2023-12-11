@@ -35,7 +35,6 @@ from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import state_ops
 from tensorflow.python.trackable import base as trackable
-from tensorflow.python.util import _pywrap_utils
 from tensorflow.python.util import object_identity
 from tensorflow.python.util import tf_should_use
 from tensorflow.python.util import traceback_utils
@@ -44,9 +43,11 @@ from tensorflow.python.util.deprecation import deprecated_args
 from tensorflow.python.util.tf_export import tf_export
 
 
-def default_variable_creator_v2(_, **kwds):
-  del kwds
-  raise NotImplementedError("resource_variable_ops needs to be imported")
+def default_variable_creator_v2(next_creator=None, **kwds):
+  from tensorflow.python.ops import resource_variable_ops  # pylint: disable=g-import-not-at-top
+
+  return resource_variable_ops.default_variable_creator_v2(
+      next_creator=next_creator, **kwds)
 
 
 def _make_getter(captured_getter, captured_previous):
@@ -1324,7 +1325,6 @@ class Variable(trackable.Trackable, metaclass=VariableMetaclass):
 
 
 Variable._OverloadAllOperators()  # pylint: disable=protected-access
-_pywrap_utils.RegisterType("Variable", Variable)
 
 
 def _try_guard_against_uninitialized_dependencies(name, initial_value):

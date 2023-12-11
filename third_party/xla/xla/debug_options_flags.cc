@@ -136,6 +136,7 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
   opts.set_xla_enable_dumping(true);
 
   opts.set_xla_gpu_enable_xla_runtime_executable(true);
+  opts.set_xla_gpu_enable_custom_fusions(false);
   opts.set_xla_gpu_nccl_termination_timeout_seconds(-1);
   opts.set_xla_gpu_enable_shared_constants(true);
 
@@ -200,7 +201,6 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
   opts.set_xla_gpu_collect_cost_model_stats(false);
   opts.set_xla_gpu_enable_split_k_autotuning(true);
 
-  opts.set_xla_gpu_single_wave_autotuning(true);
   opts.set_xla_gpu_enable_reduction_epilogue_fusion(true);
   opts.set_xla_gpu_enable_nccl_clique_optimization(false);
   opts.set_xla_gpu_cublas_fallback(true);
@@ -208,8 +208,10 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
   opts.set_xla_gpu_ensure_minor_dot_contraction_dims(false);
   opts.set_xla_gpu_filter_kernels_spilling_registers_on_autotuning(true);
   opts.set_xla_gpu_llvm_verification_level(0);
+  opts.set_xla_gpu_target_config_filename("");
   opts.set_xla_gpu_enable_cub_radix_sort(true);
-
+  opts.set_xla_gpu_enable_cudnn_layer_norm(false);
+  opts.set_xla_gpu_threshold_for_windowed_einsum_mib(100000);
   return opts;
 }
 
@@ -983,6 +985,11 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
       bool_setter_for(&DebugOptions::set_xla_gpu_fused_attention_use_cudnn_rng),
       debug_options->xla_gpu_fused_attention_use_cudnn_rng(),
       "Use cudnn random number generator for fused attention kernel."));
+  flag_list->push_back(tsl::Flag(
+      "xla_gpu_enable_cudnn_layer_norm",
+      bool_setter_for(&DebugOptions::set_xla_gpu_enable_cudnn_layer_norm),
+      debug_options->xla_gpu_enable_cudnn_layer_norm(),
+      "Rewrite layer norm patterns into cuDNN library call."));
   flag_list->push_back(
       tsl::Flag("xla_gpu_enable_cublaslt",
                 bool_setter_for(&DebugOptions::set_xla_gpu_enable_cublaslt),
@@ -1059,6 +1066,18 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
       bool_setter_for(&DebugOptions::set_xla_gpu_enable_xla_runtime_executable),
       debug_options->xla_gpu_enable_xla_runtime_executable(),
       "Whether to enable XLA runtime for XLA:GPU backend"));
+  flag_list->push_back(tsl::Flag(
+      "xla_gpu_enable_custom_fusions",
+      bool_setter_for(&DebugOptions::set_xla_gpu_enable_custom_fusions),
+      debug_options->xla_gpu_enable_custom_fusions(),
+      "Whether to enable XLA custom fusions"));
+  flag_list->push_back(tsl::Flag(
+      "xla_gpu_enable_custom_fusions_re",
+      string_setter_for(&DebugOptions::set_xla_gpu_enable_custom_fusions_re),
+      debug_options->xla_gpu_enable_custom_fusions_re(),
+      "Limits custom fusion only to fusions which match this regular "
+      "expression. Default is all custom fusions registerered in a current "
+      "process."));
   flag_list->push_back(
       tsl::Flag("xla_gpu_enable_gpu2_runtime",
                 bool_setter_for(&DebugOptions::set_xla_gpu_enable_gpu2_runtime),
@@ -1334,13 +1353,6 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
       bool_setter_for(&DebugOptions::set_xla_gpu_enable_split_k_autotuning),
       debug_options->xla_gpu_enable_split_k_autotuning(),
       "Enable split_k autotuning for triton gemms."));
-  flag_list->push_back(tsl::Flag(
-      "xla_gpu_single_wave_autotuning",
-      bool_setter_for(&DebugOptions::set_xla_gpu_single_wave_autotuning),
-      debug_options->xla_gpu_single_wave_autotuning(),
-      "Enable single \"wave\" autotuning. This uses more memory for "
-      "compilation, but utilizes CPU cores better, so compilation can be "
-      "faster."));
 
   flag_list->push_back(tsl::Flag(
       "xla_gpu_enable_reduction_epilogue_fusion",
@@ -1397,10 +1409,24 @@ void MakeDebugOptionsFlags(std::vector<tsl::Flag>* flag_list,
       "Sets how often we verify the generated llvm modules. Higher "
       "levels mean more frequent verification. Currently supported: 0, 1."));
   flag_list->push_back(tsl::Flag(
+      "xla_gpu_target_config_filename",
+      string_setter_for(&DebugOptions::set_xla_gpu_target_config_filename),
+      debug_options->xla_gpu_target_config_filename(),
+      "Filename for GPU TargetConfig. Triggers devicless compilation: attached "
+      "device is "
+      "ignored, and the proto is queried instead"));
+  flag_list->push_back(tsl::Flag(
       "xla_gpu_enable_cub_radix_sort",
       bool_setter_for(&DebugOptions::set_xla_gpu_enable_cub_radix_sort),
       debug_options->xla_gpu_enable_cub_radix_sort(),
       "Enable radix sort using CUB for simple shapes"));
+  flag_list->push_back(tsl::Flag(
+      "xla_gpu_threshold_for_windowed_einsum_mib",
+      int64_setter_for(
+          &DebugOptions::set_xla_gpu_threshold_for_windowed_einsum_mib),
+      debug_options->xla_gpu_threshold_for_windowed_einsum_mib(),
+      "Threshold to enable windowed einsum (collective matmul) in MB."
+      "Default is 100000"));
 }  // NOLINT(readability/fn_size)
 
 // Allocates flag_values and flag_objects; this function must not be called more

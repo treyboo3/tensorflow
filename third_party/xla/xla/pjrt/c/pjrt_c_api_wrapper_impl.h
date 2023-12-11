@@ -154,7 +154,6 @@ struct PJRT_LoadedExecutable {
 
   const xla::PjRtLoadedExecutable* get() const { return executable.get(); }
   xla::PjRtLoadedExecutable* get() { return executable.get(); }
-  xla::StatusOr<std::optional<std::string>> fingerprint;
 };
 
 struct PJRT_Buffer {
@@ -287,6 +286,8 @@ PJRT_Error* PJRT_Executable_OutputMemoryKinds(
 PJRT_Error* PJRT_Executable_OptimizedProgram(
     PJRT_Executable_OptimizedProgram_Args* args);
 PJRT_Error* PJRT_Executable_Serialize(PJRT_Executable_Serialize_Args* args);
+PJRT_Error* PJRT_Executable_GetCompiledMemoryStats(
+    PJRT_Executable_GetCompiledMemoryStats_Args* args);
 
 PJRT_Error* PJRT_LoadedExecutable_Destroy(
     PJRT_LoadedExecutable_Destroy_Args* args);
@@ -300,8 +301,8 @@ PJRT_Error* PJRT_Executable_DeserializeAndLoad(
     PJRT_Executable_DeserializeAndLoad_Args* args);
 PJRT_Error* PJRT_LoadedExecutable_GetExecutable(
     PJRT_LoadedExecutable_GetExecutable_Args* args);
-// TODO: b/306669267 - this method is deprecated. When can we return
-// unimplemented?
+// TODO: b/306669267 - this method is deprecated. Return unimplemented error,
+// until the next major version upgrade.
 PJRT_Error* PJRT_LoadedExecutable_Fingerprint(
     PJRT_LoadedExecutable_Fingerprint_Args* args);
 
@@ -593,6 +594,8 @@ constexpr PJRT_Api CreatePjrtApi(
       /*PJRT_Executable_Fingerprint=*/pjrt::PJRT_Executable_Fingerprint,
       /*PJRT_Client_TopologyDescription= */
       pjrt::PJRT_Client_TopologyDescription,
+      /*PJRT_Executable_GetCompiledMemoryStats= */
+      pjrt::PJRT_Executable_GetCompiledMemoryStats,
   };
 }
 

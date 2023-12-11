@@ -47,6 +47,9 @@ limitations under the License.
 #include "xla/stream_executor/platform/port.h"
 #include "xla/stream_executor/stream_executor_pimpl.h"
 #include "xla/stream_executor/temporary_memory_manager.h"
+#include "tsl/platform/errors.h"
+#include "tsl/platform/status.h"
+#include "tsl/platform/statusor.h"
 
 namespace stream_executor {
 
@@ -180,6 +183,22 @@ class Stream {
   // argument number and types that were mismatched.
   template <typename... Params, typename... Args>
   tsl::Status ThenLaunch(ThreadDim thread_dims, BlockDim block_dims,
+                         const TypedKernel<Params...> &kernel, Args... args);
+
+  template <typename... Params, typename... Args>
+  tsl::Status ThenLaunch(ThreadDim thread_dims, BlockDim block_dims,
+                         ClusterDim cluster_dims,
+                         const TypedKernel<Params...> &kernel, Args... args);
+
+  // Same as above, with an explicit argument for shared memory size in bytes.
+  template <typename... Params, typename... Args>
+  tsl::Status ThenLaunch(ThreadDim thread_dims, BlockDim block_dims,
+                         int32_t shmem_bytes,
+                         const TypedKernel<Params...> &kernel, Args... args);
+
+  template <typename... Params, typename... Args>
+  tsl::Status ThenLaunch(ThreadDim thread_dims, BlockDim block_dims,
+                         ClusterDim cluster_dims, int32_t shmem_bytes,
                          const TypedKernel<Params...> &kernel, Args... args);
 
   // Create a dependency for this stream's next work on the other stream
@@ -444,6 +463,24 @@ class Stream {
         conv_input_scale, side_input_scale, leakyrelu_alpha, input_descriptor,
         filter_descriptor, bias_descriptor, output_descriptor,
         convolution_descriptor, activation_mode);
+  }
+
+  tsl::StatusOr<std::unique_ptr<const dnn::NormRunner>> NormRunnerFromDesc(
+      const dnn::AlgorithmDesc &algorithm_desc, double epsilon,
+      const dnn::TensorDescriptor &input_descriptor,
+      const dnn::TensorDescriptor &scale_descriptor,
+      const dnn::TensorDescriptor &bias_descriptor,
+      const dnn::TensorDescriptor &output_descriptor,
+      std::optional<dnn::TensorDescriptor> expectation_descriptor,
+      std::optional<dnn::TensorDescriptor> norm_factor_descriptor) {
+    dnn::DnnSupport *dnn_support = parent_->AsDnn();
+    if (!dnn_support) {
+      return absl::UnimplementedError("DNN library is not found.");
+    }
+    return dnn_support->NormRunnerFromDesc(
+        this, algorithm_desc, epsilon, input_descriptor, scale_descriptor,
+        bias_descriptor, output_descriptor, expectation_descriptor,
+        norm_factor_descriptor);
   }
 
   tsl::StatusOr<std::unique_ptr<const dnn::FusedMHARunner>>
@@ -1526,18 +1563,42 @@ inline tsl::Status Stream::ThenLaunch(ThreadDim thread_dims,
                                       BlockDim block_dims,
                                       const TypedKernel<Params...> &kernel,
                                       Args... args) {
-  KernelInvocationChecker<std::tuple<Params...>,
-                          std::tuple<Args...>>::CheckAllStaticAssert();
-
-  // This is the core that allows type-safe kernel launching.
-  // Since the platforms take kernel arguments as tuples of (void *, size),
-  // we pack the variadic parameters passed as ...args into the desired
-  // tuple form and pass that packed form to the StreamExecutor::Launch()
-  // implementation.
-  KernelArgsArray<sizeof...(args)> kernel_args;
-  kernel.PackParams(&kernel_args, args...);
+  auto kernel_args = PackKernelArgs(kernel, args...);
   TF_RETURN_IF_ERROR(
-      parent_->Launch(this, thread_dims, block_dims, kernel, kernel_args));
+      parent_->Launch(this, thread_dims, block_dims, kernel, *kernel_args));
+  return ::tsl::OkStatus();
+}
+
+template <typename... Params, typename... Args>
+inline tsl::Status Stream::ThenLaunch(ThreadDim thread_dims,
+                                      BlockDim block_dims, int32_t shmem_bytes,
+                                      const TypedKernel<Params...> &kernel,
+                                      Args... args) {
+  auto kernel_args = PackKernelArgs(shmem_bytes, args...);
+  TF_RETURN_IF_ERROR(
+      parent_->Launch(this, thread_dims, block_dims, kernel, *kernel_args));
+  return ::tsl::OkStatus();
+}
+
+template <typename... Params, typename... Args>
+inline tsl::Status Stream::ThenLaunch(ThreadDim thread_dims,
+                                      BlockDim block_dims,
+                                      ClusterDim cluster_dims,
+                                      const TypedKernel<Params...> &kernel,
+                                      Args... args) {
+  auto kernel_args = PackKernelArgs(kernel, args...);
+  TF_RETURN_IF_ERROR(parent_->Launch(this, thread_dims, block_dims,
+                                     cluster_dims, kernel, *kernel_args));
+  return ::tsl::OkStatus();
+}
+
+template <typename... Params, typename... Args>
+inline tsl::Status Stream::ThenLaunch(
+    ThreadDim thread_dims, BlockDim block_dims, ClusterDim cluster_dims,
+    int32_t shmem_bytes, const TypedKernel<Params...> &kernel, Args... args) {
+  auto kernel_args = PackKernelArgs(shmem_bytes, args...);
+  TF_RETURN_IF_ERROR(parent_->Launch(this, thread_dims, block_dims,
+                                     cluster_dims, kernel, *kernel_args));
   return ::tsl::OkStatus();
 }
 
